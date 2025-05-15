@@ -19,7 +19,7 @@ public class InventoryButtonsController : MonoBehaviour
 
     public void SetupInventoryButtonsController()
     {
-        model = new InventoryButtonsModel(inventoryDatabase, inventoryController, dataSaveController.model);
+        model = new InventoryButtonsModel(inventoryController, dataSaveController);
         view = new InventoryButtonsView();
 
         SetButtonsListener();

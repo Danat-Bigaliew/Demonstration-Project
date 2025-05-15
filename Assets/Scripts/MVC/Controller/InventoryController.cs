@@ -4,8 +4,6 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
 using Zenject;
-using System;
-using System.Linq;
 
 public class InventoryController : MonoBehaviour
 {
@@ -16,11 +14,11 @@ public class InventoryController : MonoBehaviour
     [SerializeField] private List<InventoryNewItemEntry> defaultInventoryDatabase;
 
     [SerializeField] private float animationDuration;
+    [SerializeField] private float defaultAlphaPercent = 1f;
+    [SerializeField] private float unusualAlphaPercent = 0.6f;
 
     private float defaultInventoryItemPosX;
     private bool isButtonDown = false;
-
-    public Dictionary<int, InventoryItemData> iventoryDatabaseList { get; private set; }
 
     private GameObject itemPrefab;
     public Transform inventoryContent { get; private set; }
@@ -41,16 +39,16 @@ public class InventoryController : MonoBehaviour
     public void SetupInventoryController()
     {
         inventoryContent = gameObject.transform;
-        iventoryDatabaseList = inventoryDatabase.GetDictionaryItems();
         gridLayoutGroup = GetComponent<GridLayoutGroup>();
         itemPrefab = Resources.Load<GameObject>("Prefabs/Inventory Item");
 
         dataSaveController.SearchInventoryDataFile();
-        bool fileIsExist = dataSaveController.model.SearchJsonFile();
+        bool fileIsExist = dataSaveController.SearchForJSONFile();
 
-        model = new InventoryModel(defaultInventoryDatabase, iventoryDatabaseList);
+        model = new InventoryModel(defaultInventoryDatabase);
         view = new InventoryView();
 
+        model.SetInventoryDataBaseList(inventoryDatabase);
         model.OnAmountChanged += SetItemData;
 
         switch (fileIsExist)
@@ -60,12 +58,12 @@ public class InventoryController : MonoBehaviour
                 break;
         }
 
-        model.GetItemData(dataSaveController.model.inventoryData);
+        model.GetItemData(dataSaveController.GetInventoryData());
 
         switch (fileIsExist)
         {
             case false:
-                dataSaveController.model.RecordingAllInventoryData(dataSaveController.model.inventoryData);
+                dataSaveController.RecordingInventroyData();
                 break;
         }
     }
@@ -76,7 +74,7 @@ public class InventoryController : MonoBehaviour
         Button newItemButton = newItem.GetComponent<Button>();
 
         model.AddInventoryButtonsList(indexItem, newItemButton);
-        view.SetInventoryItemUI(newItemData, iventoryDatabaseList, newItem, itemPrefab.name);
+        view.SetInventoryItemUI(newItemData, model.iventoryDatabaseList, newItem, itemPrefab.name);
         CustomButtonsListener(newItem.GetComponent<RectTransform>(), indexItem);
     }
 
@@ -103,7 +101,7 @@ public class InventoryController : MonoBehaviour
             originalPosition = newItem.anchoredPosition;
             defaultInventoryItemPosX = itemRect.anchoredPosition.x;
 
-            ChangeAlfaUnpressedButtons(newItem.transform, 0.6f);
+            ChangeAlphaUnpressedButtons(newItem.transform, unusualAlphaPercent);
         });
         trigger.triggers.Add(pointerDown);
 
@@ -111,7 +109,7 @@ public class InventoryController : MonoBehaviour
         pointerUp.callback.AddListener((data) =>
         {
             StartCoroutine(GetTargetItem(newItem, indexItem, originalPosition));
-            ChangeAlfaUnpressedButtons(newItem.transform, 1f);
+            ChangeAlphaUnpressedButtons(newItem.transform, defaultAlphaPercent);
         });
         trigger.triggers.Add(pointerUp);
 
@@ -124,19 +122,35 @@ public class InventoryController : MonoBehaviour
         trigger.triggers.Add(itemDrag);
     }
 
-    private void ChangeAlfaUnpressedButtons(Transform pressedItem, float procentInvisible)
+    private void ChangeAlphaUnpressedButtons(Transform pressedItem, float procentInvisible)
     {
         for (int i = 0; i < inventoryContent.childCount; i++)
         {
-            Transform child = inventoryContent.transform.GetChild(i);
+            Transform item = inventoryContent.transform.GetChild(i);
 
-            if (child != pressedItem)
+            if (item != pressedItem)
             {
-                view.ChangeAlphaChannel(child, procentInvisible);
+                view.ChangeAlphaChannel(item, procentInvisible);
             }
         }
     }
+    
+    public void ChangeWeaponState(int weaponIndex, bool weaponState)
+    {
+        Transform item = inventoryContent.GetChild(weaponIndex).GetChild(0);
+        Debug.Log($"weaponIndex : {weaponIndex}, itemBackground : {item}");
 
+        switch (weaponState)
+        {
+            case true:
+                view.ChangeAlphaChannel(item, unusualAlphaPercent);
+                break;
+            case false:
+                float weaponAlphaValue = 0f;
+                view.ChangeAlphaChannel(item, weaponAlphaValue);
+                break;
+        }
+    }
     public void CreateInventoryItem(int newItemIndexPosition,int typeIdCompletedItem, bool isWeaponIntactItem)
     {
         InventoryNewItemEntry newItemData = model.CreateInventoryNewItemEntry(typeIdCompletedItem, isWeaponIntactItem);
@@ -161,7 +175,7 @@ public class InventoryController : MonoBehaviour
             int localIndexTargetItem = draggedItem.transform.GetSiblingIndex();
             int localIndexDraggedItem = targetItem.transform.GetSiblingIndex();
 
-            dataSaveController.model.SwapInventoryItem(localIndexTargetItem, localIndexDraggedItem);
+            dataSaveController.SwapInventoryItem(localIndexTargetItem, localIndexDraggedItem);
 
             Dictionary<string, object> dataForDOTAnimation = new()
         {
@@ -184,6 +198,9 @@ public class InventoryController : MonoBehaviour
         gridLayoutGroup.enabled = true;
     }
 
+    public Dictionary<int, Button> GetInventoryButtonsList() { return model.inventoryButtonsList; }
+    public Button GetInventoryButtonItem(int indexButton) { return model.inventoryButtonsList[indexButton]; }
+    public InventoryItemData GetItemFromInventoryDatabaseList(int itemIndex) { return model.iventoryDatabaseList[itemIndex]; }
     public void AddInventoryItemInInventoryDataDictionary(int indexItem, InventoryNewItemEntry newItemData)
     {
         Dictionary<string, object> tempDictionaryToSaveData = new()
@@ -193,11 +210,13 @@ public class InventoryController : MonoBehaviour
               { "isWeaponIntact", newItemData.isWeaponIntact }
            };
 
-        dataSaveController.model.inventoryData.Add(indexItem, tempDictionaryToSaveData);
+        dataSaveController.AddItemForInventoryData(indexItem, tempDictionaryToSaveData);
     }
-
     public void UpdateInventoryAmountData(int itemIndex, int newItemAmount)
     {
+        if (itemIndex >= inventoryContent.childCount)
+            itemIndex = inventoryContent.childCount - 1;
+
         Transform item = inventoryContent.GetChild(itemIndex).GetComponent<Transform>();
 
         view.UpdateInventoryItemAmountUI(item, newItemAmount);
@@ -209,7 +228,7 @@ public class InventoryController : MonoBehaviour
         model.DeleteInventoryButtonList(deletedItemIndexPosition);
         view.DeleteInventoryItem(inventoryContent, deletedItem);
         dataSaveController.RemoveInventoryItem(deletedItemIndexPosition);
-        
+        Debug.Log("Обновление слушателя");
         inventoryButtonsController.UpdateInventoryItemsListener();
     }
 }

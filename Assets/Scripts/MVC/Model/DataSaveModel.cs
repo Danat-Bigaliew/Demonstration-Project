@@ -50,13 +50,16 @@ public class DataSaveModel
         return JsonConvert.DeserializeObject<Dictionary<int, Dictionary<string, object>>>(json);
     }
 
-    public void RecordingAllInventoryData(Dictionary<int, Dictionary<string, object>> inventoryData)
+    public void RecordingAllInventoryData()
     {
         string jsonData = JsonConvert.SerializeObject(inventoryData, Formatting.Indented);
 
         File.WriteAllText(filePath, jsonData);
     }
 
+    public Dictionary<string, object> GetInventoryItem(int itemIndex) { return inventoryData[itemIndex]; }
+    public int AddOrDeleteItemAmount(int itemIndex, int newAmount) { return Convert.ToInt32(inventoryData[itemIndex]["Amount"] = newAmount); }
+    public void AddInventoryDataItem(int indexKey, Dictionary<string, object> itemValue) { inventoryData.Add(indexKey, itemValue); }
     public void RemoveInventoryItem(int targetItemIndex)
     {
         Dictionary<int, Dictionary<string, object>> newInventoryData = new();
@@ -89,5 +92,13 @@ public class DataSaveModel
         {
             inventoryData.Add(itemData.Key - 1, itemData.Value);
         }
+    }
+    public bool ChangeInventoryItemState(int itemIndex) 
+    {
+        bool inventoryItemWeaponState = Convert.ToBoolean(inventoryData[itemIndex]["isWeaponIntact"]);
+        Debug.Log($"Before Change State : {inventoryItemWeaponState}");
+        inventoryData[itemIndex]["isWeaponIntact"] = !inventoryItemWeaponState;
+
+        return Convert.ToBoolean(inventoryData[itemIndex]["isWeaponIntact"]);
     }
 }

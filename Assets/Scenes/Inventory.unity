@@ -901,6 +901,8 @@ MonoBehaviour:
     amout: 3
     isWeaponIntact: 0
   animationDuration: 0.2
+  defaultAlphaPercent: 1
+  unusualAlphaPercent: 0.6
 --- !u!114 &666016279
 MonoBehaviour:
   m_ObjectHideFlags: 0

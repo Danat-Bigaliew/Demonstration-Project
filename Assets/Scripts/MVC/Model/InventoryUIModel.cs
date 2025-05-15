@@ -43,7 +43,6 @@ public class InventoryUIModel
 
         return gameCanvas;
     }
-
     private Dictionary<string, float> DataInventoryContainer(Vector2 currentSize)
     {
         float messageForPlayerHorizontalPadding = currentSize.x * 0.234f;
@@ -84,13 +83,13 @@ public class InventoryUIModel
 
         return inventoryData;
     }
-
     private Dictionary<string, float> DataInventoryItem(Vector2 currentSize, float inventoryContainerWidth)
     {
         GridLayoutGroup gridLayoutGroup = inventoryContent.GetComponent<GridLayoutGroup>();
 
-        float itemPadding = currentSize.x * 0.0242f;
-        float itemSize = (inventoryContainerWidth - (itemPadding * gridLayoutGroup.constraintCount)) / gridLayoutGroup.constraintCount;
+        float itemPadding = currentSize.x * 0.018f;
+        float itemPaddingForSize = currentSize.x * 0.0242f;
+        float itemSize = (inventoryContainerWidth - (itemPaddingForSize * gridLayoutGroup.constraintCount)) / gridLayoutGroup.constraintCount;
         float itemImageSize = itemSize * 0.8f;
         float itemImagePosX = (itemSize - itemImageSize) / 2f;
         float itemImagePosY = (itemImagePosX * 2f) / 4f;

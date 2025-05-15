@@ -7,15 +7,16 @@ using UnityEngine.UI;
 public class InventoryModel
 {
     private List<InventoryNewItemEntry> defaultInventoryDatabase;
+
+    public Dictionary<int, InventoryItemData> iventoryDatabaseList { get; private set; }
     public Dictionary<int, Button> inventoryButtonsList { get; private set; } = new();
-    public Dictionary<int, InventoryItemData> itemList { get; private set; } = new();
+    //public Dictionary<int, InventoryItemData> itemList { get; private set; } = new();
 
     public event Action<int, InventoryNewItemEntry> OnAmountChanged;
 
-    public InventoryModel(List<InventoryNewItemEntry> defaultInventoryDatabase, Dictionary<int, InventoryItemData> itemList)
+    public InventoryModel(List<InventoryNewItemEntry> defaultInventoryDatabase)
     {
         this.defaultInventoryDatabase = defaultInventoryDatabase;
-        this.itemList = itemList;
     }
 
     public void GetItemData(Dictionary<int, Dictionary<string, object>> inventoryData)
@@ -25,7 +26,7 @@ public class InventoryModel
         else
             GetItemFromDefaultInventoryDatabase();
     }
-
+    public void SetInventoryDataBaseList(InventoryDatabase inventoryDatabase) { iventoryDatabaseList = inventoryDatabase.GetDictionaryItems(); }
     private void GetItemFromJSONFile(Dictionary<int, Dictionary<string, object>> inventoryData)
     {
         foreach(var firstItem in inventoryData)
@@ -47,7 +48,7 @@ public class InventoryModel
         foreach (var child in defaultInventoryDatabase)
         {
             int currentAmountIteration = child.amout;
-            int maxStackItem = itemList[child.itemID].MaxItemStack;
+            int maxStackItem = iventoryDatabaseList[child.itemID].MaxItemStack;
             bool isWeaponIntactItem = child.isWeaponIntact;
 
             while (currentAmountIteration > 0)
@@ -63,6 +64,15 @@ public class InventoryModel
         }
     }
 
+    public InventoryNewItemEntry CreateInventoryNewItemEntry(int itemID, bool isWeaponIntactItem, int amount = 1)
+    {
+        return new InventoryNewItemEntry
+        {
+            itemID = itemID,
+            amout = amount,
+            isWeaponIntact = isWeaponIntactItem
+        };
+    }
     public Vector2 NewPressedButtonPosition(BaseEventData data, Transform inventoryContent, Camera UICamera, Vector2 pointerOffset)
     {
         PointerEventData ped = (PointerEventData)data;
@@ -77,6 +87,22 @@ public class InventoryModel
 
         return targetPosition;
     }
+    public RectTransform GetItemRect(RectTransform draggedItem, Transform content, Vector2 defaultPressedItemPosition,
+    int columnInRow, int draggedItemRow, int draggedItemColumn)
+    {
+        int targetIndex = draggedItemRow * columnInRow + draggedItemColumn;
+
+        if (targetIndex >= 0 && targetIndex < content.childCount)
+        {
+            RectTransform targetItem = content.GetChild(targetIndex).GetComponent<RectTransform>();
+            return targetItem;
+        }
+        else
+        {
+            return null;
+        }
+    }
+
     public int GetPressedItemsRow(RectTransform draggedItem, Transform inventoryContent, int itemsInRow)
     {
         int totalRows = Mathf.CeilToInt((float)inventoryContent.childCount / itemsInRow);
@@ -122,8 +148,8 @@ public class InventoryModel
 
         return closestRowIndex;
     }
-    public int GetPressedItemColumn(RectTransform draggedItem, Transform content, int itemsInRow, 
-        int draggedItemRow, Vector2 defaultDraggedItemPosition)
+    public int GetPressedItemColumn(RectTransform draggedItem, Transform content, 
+        int itemsInRow, int draggedItemRow, Vector2 defaultDraggedItemPosition)
     {
         float thresholdX = draggedItem.rect.width * 0.3f;
         float thresholdY = draggedItem.rect.height * 0.3f;
@@ -186,32 +212,6 @@ public class InventoryModel
 
         return closestColumnIndex;
     }
-    public RectTransform GetItemRect(RectTransform draggedItem, Transform content, Vector2 defaultPressedItemPosition,
-    int columnInRow, int draggedItemRow, int draggedItemColumn)
-    {
-        int targetIndex = draggedItemRow * columnInRow + draggedItemColumn;
-
-        if (targetIndex >= 0 && targetIndex < content.childCount)
-        {
-            RectTransform targetItem = content.GetChild(targetIndex).GetComponent<RectTransform>();
-            return targetItem;
-        }
-        else
-        {
-            return null;
-        }
-    }
-
-    public InventoryNewItemEntry CreateInventoryNewItemEntry(int itemID, bool isWeaponIntactItem, int amount = 1)
-    {
-        return new InventoryNewItemEntry
-        {
-            itemID = itemID,
-            amout = amount,
-            isWeaponIntact = isWeaponIntactItem
-        };
-    }
-
     public void AddInventoryButtonsList(int indexButton, Button newButton) { inventoryButtonsList.Add(indexButton, newButton); }
     public void DeleteInventoryButtonList(int indexButton)
     {

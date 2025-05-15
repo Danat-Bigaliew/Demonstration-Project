@@ -35,13 +35,15 @@ public class InventoryView
         button.anchoredPosition = newButtonPosition;
     }
 
-    public void ChangeAlphaChannel(Transform child, float procentInvisible)
+    public void ChangeAlphaChannel(Transform item, float alfaValue)
     {
-        Image childImage = child.GetChild(0).GetComponent<Image>();
+        Image childImage = item.GetChild(0).GetComponent<Image>();
         Color alfa = childImage.color;
 
-        alfa.a = procentInvisible;
+        alfa.a = alfaValue;
         childImage.color = alfa;
+
+        Debug.Log($"Item Color Alpha : {alfaValue}");
     }
 
     public IEnumerator AnimationInventoryItem(Dictionary<string, object> dataForDOTAnimation)

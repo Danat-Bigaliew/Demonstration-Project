@@ -11,28 +11,23 @@ public class InventoryButtonsModel
     public Dictionary<string, object> activeItemDictionary { get; private set; }
     public int activeInventoryItem { get; private set; } = inactiveInventoryItem;
 
-    private InventoryDatabase inventoryDatabase;
     private InventoryController inventoryController;
-    private DataSaveModel dataSaveModel;
+    private DataSaveController dataSaveController;
 
-    public InventoryButtonsModel(InventoryDatabase inventoryDatabase, InventoryController inventoryController, DataSaveModel dataSaveModel)
+    public InventoryButtonsModel(InventoryController inventoryController, DataSaveController dataSaveController)
     {
-        this.inventoryDatabase = inventoryDatabase;
         this.inventoryController = inventoryController;
-        this.dataSaveModel = dataSaveModel;
+        this.dataSaveController = dataSaveController;
     }
 
     public void SetInventoryButtonsListener()
     {
-        foreach (var button in inventoryController.model.inventoryButtonsList)
+        foreach (var button in inventoryController.GetInventoryButtonsList())
         {
             int buttonIndex = button.Key;
 
-            button.Value.onClick.AddListener(() =>
-            {
-                //Debug.Log($"inventoryIndex : {buttonIndex}");
-                UpdateActiveInventoryItem(buttonIndex);
-            });
+            button.Value.onClick.RemoveAllListeners();
+            button.Value.onClick.AddListener(() => UpdateActiveInventoryItem(buttonIndex));
         }
     }
 
@@ -42,17 +37,24 @@ public class InventoryButtonsModel
         {
             { "AddButton", inventoryAdministrationButtonsContainer.GetChild(0).GetComponent<Button>() },
             { "DeleteButton", inventoryAdministrationButtonsContainer.GetChild(1).GetComponent<Button>() },
-            { "BreakButton", inventoryAdministrationButtonsContainer.GetChild(2).GetComponent<Button>() }
+            { "ChangeWeaponState", inventoryAdministrationButtonsContainer.GetChild(2).GetComponent<Button>() }
         };
 
         inventoryAdministrationButtonsDictionary["AddButton"].onClick.AddListener(() => ClickOnAddItemButton());
         inventoryAdministrationButtonsDictionary["DeleteButton"].onClick.AddListener(() => ClickOnDeleteItemButton());
+        inventoryAdministrationButtonsDictionary["ChangeWeaponState"].onClick.AddListener(() => ClickOnChangeWeaponState());
     }
 
     private void UpdateActiveInventoryItem(int inventoryIndex)
     {
-        Dictionary<string, object> activeItemData = dataSaveModel.inventoryData[inventoryIndex];
-        Button activeButton = inventoryController.model.inventoryButtonsList[inventoryIndex];
+        if(dataSaveController == null)
+            Debug.Log("dataSaveController == null");
+
+        if (dataSaveController.GetInventoryItem(inventoryIndex) == null)
+            Debug.Log("dataSaveController.GetInventoryItem == null");
+
+        Dictionary<string, object> activeItemData = dataSaveController.GetInventoryItem(inventoryIndex);
+        Button activeButton = inventoryController.GetInventoryButtonItem(inventoryIndex);
 
         activeInventoryItem = inventoryIndex;
     }
@@ -84,6 +86,19 @@ public class InventoryButtonsModel
                 break;
         }
     }
+    private void ClickOnChangeWeaponState()
+    {
+        Dictionary<string, object> inventoryItemData = dataSaveController.GetInventoryItem(activeInventoryItem);
+        InventoryItemData weaponItemData = inventoryController.GetItemFromInventoryDatabaseList(Convert.ToInt32(inventoryItemData["itemTypeID"]));
+
+        switch (weaponItemData.ItemType)
+        {
+            case ItemType.Weapon:
+                Debug.Log("Попытка изменить состояние оружия");
+                ChangeWeaponState(activeInventoryItem);
+                break;
+        }
+    }
 
     private void AddInventoryItem(Dictionary<string, object> activeItemDictionary)
     {
@@ -94,10 +109,14 @@ public class InventoryButtonsModel
         int activeItemAmount = Convert.ToInt32(activeItemDictionary["itemAmount"]);
 
         if (activeItemAmount + 1 < currentItem.MaxItemStack)
+        {
             inventoryController.UpdateInventoryAmountData(activeItemPositionIndex,
                 NewItemAmountValue(activeItemPositionIndex, activeItemAmount, minimumValueInItem));
+        }
         else
+        {
             SearchForUnfilledItem(currentItem, itemTypeID, minimumValueInItem);
+        }
     }
     private void DeleteInventoryItem(Dictionary<string, object> activeItemDictionary)
     {
@@ -119,11 +138,17 @@ public class InventoryButtonsModel
         }
 
     }
+    private void ChangeWeaponState(int itemIndex)
+    {
+        bool itemWeaponState = dataSaveController.ChangeItemWeaponState(itemIndex);
+        inventoryController.ChangeWeaponState(itemIndex, itemWeaponState);
+        //Debug.Log($"After Change State : {itemWeaponState}");
+    }
 
     private Dictionary<string, object> GetInventoryItemData(int activeItemPositionIndex)
     {
-        Dictionary<string, object> activeItemData = dataSaveModel.inventoryData[activeItemPositionIndex];
-        InventoryItemData currentItem = inventoryController.iventoryDatabaseList[Convert.ToInt32(activeItemData["itemTypeID"])];
+        Dictionary<string, object> activeItemData = dataSaveController.GetInventoryItem(activeItemPositionIndex);
+        InventoryItemData currentItem = inventoryController.GetItemFromInventoryDatabaseList(Convert.ToInt32(activeItemData["itemTypeID"]));
 
         int itemTypeID = Convert.ToInt32(activeItemData["itemTypeID"]);
         int itemAmount = Convert.ToInt32(activeItemData["Amount"]);
@@ -139,8 +164,9 @@ public class InventoryButtonsModel
 
     private int NewItemAmountValue(int activeItemIndex, int itemAmount, int addOrDeleteItemAmount)
     {
-        dataSaveModel.inventoryData[activeItemIndex]["Amount"] = itemAmount + addOrDeleteItemAmount;//Увеличиваем Amount на 1
-        return Convert.ToInt32(dataSaveModel.inventoryData[activeItemIndex]["Amount"]);
+        //dataSaveController.ResizeAmountInventoryData(activeItemIndex, itemAmount + addOrDeleteItemAmount);
+        //dataSaveModel.inventoryData[activeItemIndex]["Amount"] = itemAmount + addOrDeleteItemAmount;//Увеличиваем Amount на 1
+        return dataSaveController.ResizeAmountInventoryData(activeItemIndex, itemAmount + addOrDeleteItemAmount);
     }
 
     private void SearchForUnfilledItem(InventoryItemData currentItem, int targetItemTypeID, int addOrDeleteItemAmount)
@@ -151,7 +177,7 @@ public class InventoryButtonsModel
         bool isWeaponIntactItem = false;//Default value
         bool IsUnfilledItemStack = false;
 
-        foreach (var item in dataSaveModel.inventoryData)
+        foreach (var item in dataSaveController.GetInventoryDataDictionary())
         {
             int itemPosisionIndex = item.Key;
             int itemTypeID = Convert.ToInt32(item.Value["itemTypeID"]);
@@ -166,7 +192,7 @@ public class InventoryButtonsModel
             }
             else if (itemTypeID == targetItemTypeID && itemAmount == currentItem.MaxItemStack)
             {
-                newItemIndexPosition = dataSaveModel.inventoryData.Count + 1;
+                newItemIndexPosition = dataSaveController.GetInventoryDataDictionary().Count + 1;
                 typeIDCompletedItem = itemTypeID;
                 itemIndexPosition = item.Key;
                 isWeaponIntactItem = Convert.ToBoolean(item.Value["isWeaponIntact"]);
@@ -183,7 +209,7 @@ public class InventoryButtonsModel
     private int GetRandomActiveButton()
     {
         int firstIndex = 0;
-        int lastIndex = inventoryController.model.inventoryButtonsList.Count;
+        int lastIndex = inventoryController.GetInventoryButtonsList().Count;
 
         return UnityEngine.Random.Range(firstIndex, lastIndex);
     }

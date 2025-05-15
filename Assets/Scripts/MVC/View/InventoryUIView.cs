@@ -1,4 +1,3 @@
-using NUnit.Framework.Constraints;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -37,7 +36,6 @@ public class InventoryUIView
         OnOffInventoryButton.sizeDelta = new Vector2(
             inventoryUIData["DataGameContainer"]["OnOffInventoryButtonSize"], inventoryUIData["DataGameContainer"]["OnOffInventoryButtonSize"]);
     }
-
     private void InventoryContainerUI(Dictionary<string, Dictionary<string, float>> inventoryUIData)
     {
         Transform inventory = inventoryUIContainer.GetChild(1).transform;
@@ -47,10 +45,10 @@ public class InventoryUIView
         RectTransform scrollView = inventory.GetChild(1).GetChild(1).GetComponent<RectTransform>();
         GridLayoutGroup gridLayoutGroup = inventoryContent.GetComponent<GridLayoutGroup>();
 
-        messageForPlayer.sizeDelta = new Vector2(inventoryUIData["DataInventoryContainer"]["messageForPlayerHorizontalPadding"], 
+        messageForPlayer.sizeDelta = new Vector2(-inventoryUIData["DataInventoryContainer"]["messageForPlayerHorizontalPadding"], 
             inventoryUIData["DataInventoryContainer"]["messageForPlayerHeight"]);
         messageForPlayer.anchoredPosition = new Vector2(messageForPlayer.anchoredPosition.x,
-            inventoryUIData["DataInventoryContainer"]["messageForPlayerPoxY"]);
+            -inventoryUIData["DataInventoryContainer"]["messageForPlayerPoxY"]);
         inventoryContainer.sizeDelta = new Vector2(inventoryUIData["DataInventoryContainer"]["inventoryContainerWidth"],
             inventoryUIData["DataInventoryContainer"]["inventoryContainerHeight"]);
         inventoryContainer.anchoredPosition = new Vector2(inventoryUIData["DataInventoryContainer"]["inventoryContainerPosX"],
@@ -68,7 +66,6 @@ public class InventoryUIView
         gridLayoutGroup.cellSize = new Vector2(inventoryUIData["DataInventoryItem"]["itemSize"], 
             inventoryUIData["DataInventoryItem"]["itemSize"]);
     }
-
     private void InventoryItems(Dictionary<string, Dictionary<string, float>> inventoryUIData)
     {
         foreach(Transform itemChild in inventoryContent)
